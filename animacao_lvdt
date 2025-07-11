@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador LVDT</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para a ilustração do LVDT */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Fundo azul-acinzentado claro */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .lvdt-container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            max-width: 98vw; /* Aumentado para quase toda a largura da viewport */
+            width: 100%;
+            border: 1px solid #e2e8f0;
+        }
+
+        .lvdt-illustration {
+            position: relative;
+            width: 100%;
+            max-width: 95%; /* 95% da largura do contêiner pai */
+            height: 150px;
+            background-color: #e0e7ff; /* Azul-púrpura claro */
+            border-radius: 10px;
+            border: 2px solid #6366f1; /* Borda índigo */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden; /* Oculta o excesso para o movimento do núcleo */
+        }
+
+        .coil {
+            position: absolute;
+            height: 80px;
+            background-color: #4f46e5; /* Índigo */
+            border-radius: 5px;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
+            border: 2px solid #3730a3;
+            display: flex; /* Habilita flexbox para centralizar o conteúdo */
+            flex-direction: column; /* Empilha o conteúdo verticalmente */
+            justify-content: center; /* Centraliza horizontalmente */
+            align-items: center; /* Centraliza verticalmente */
+            color: #fff; /* Cor do texto branco */
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 5px; /* Adiciona preenchimento para o texto */
+            box-sizing: border-box;
+        }
+
+        .coil span:first-child { /* Para "Secundário 1/2" */
+            line-height: 1; /* Ajusta a altura da linha para melhor espaçamento */
+        }
+
+        .coil .voltage-symbol {
+            font-size: 0.7rem; /* Fonte menor para o símbolo de tensão */
+            font-weight: normal; /* Menos negrito que o rótulo principal */
+            margin-top: 2px; /* Pequena margem do rótulo acima */
+        }
+
+        .primary-coil {
+            width: 200px; /* Largura aumentada */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2;
+        }
+
+        .secondary-coil-1, .secondary-coil-2 {
+            width: 200px; /* Largura aumentada */
+            z-index: 1;
+        }
+
+        .secondary-coil-1 {
+            left: 5%; /* Ajuste da posição para bobinas mais largas */
+        }
+
+        .secondary-coil-2 {
+            right: 5%; /* Ajuste da posição para bobinas mais largas */
+        }
+
+        .core {
+            position: absolute;
+            width: 410px; /* Largura do núcleo ajustada para cobrir duas bobinas */
+            height: 40px;
+            background-color: #9ca3af; /* Cinza */
+            border-radius: 20px;
+            z-index: 3;
+            cursor: grab;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            border: 2px solid #6b7280;
+            left: calc(50% - 205px); /* Posição central inicial ajustada (metade da nova largura) */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #374151; /* Cor do texto cinza mais escuro */
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .core.dragging {
+            cursor: grabbing;
+        }
+
+        .output-display {
+            background-color: #f8fafc; /* Azul-acinzentado mais claro */
+            border-radius: 10px;
+            padding: 20px;
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            border: 1px solid #cbd5e1;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .slider-container {
+            width: 100%;
+            max-width: 500px;
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            -webkit-appearance: none;
+            height: 10px;
+            background: #d1d5db; /* Cinza claro */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 25px;
+            height: 25px;
+            background: #4f46e5; /* Índigo */
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border: 2px solid #3730a3;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            background: #4f46e5;
+            border-radius: 50%;
+            cursor: grab;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            border: 2px solid #3730a3;
+        }
+
+        .graphs-row-container {
+            display: flex;
+            flex-wrap: wrap; /* Permite que os gráficos quebrem para a próxima linha em telas menores */
+            justify-content: center; /* Centraliza os gráficos horizontalmente */
+            gap: 20px; /* Espaçamento entre os gráficos */
+            width: 100%;
+            max-width: 100%; /* Permite que os gráficos ocupem a largura total disponível */
+        }
+
+        .graph-container, .sinusoidal-graph-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+            flex: 1 1 45%; /* Permite que os gráficos cresçam/diminuam, ocupando cerca de 45% da largura */
+            min-width: 300px; /* Largura mínima antes de quebrar para a próxima linha */
+        }
+
+        .graph-container canvas, .sinusoidal-graph-container canvas {
+            background-color: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 5px;
+            width: 100%;
+            height: 250px; /* Altura fixa para consistência */
+        }
+
+        /* Estilos para o novo gráfico senoidal */
+        .sinusoidal-graph-container canvas {
+            height: 300px; /* Altura maior para as formas de onda */
+        }
+
+
+        /* Ajustes responsivos */
+        @media (max-width: 768px) {
+            .lvdt-container {
+                padding: 20px;
+                max-width: 100%; /* Ocupa a largura total em telas menores */
+            }
+            .lvdt-illustration {
+                max-width: 100%; /* Ajusta a largura máxima para telas menores */
+                height: 120px;
+            }
+            .coil {
+                height: 60px;
+                font-size: 0.8rem;
+            }
+            .primary-coil {
+                width: 120px; /* Ajustado para telas menores */
+            }
+            .secondary-coil-1, .secondary-coil-2 {
+                width: 120px; /* Ajustado para telas menores */
+                left: 5%; /* Ajuste da posição para telas menores */
+            }
+            .secondary-coil-2 {
+                right: 5%; /* Ajuste da posição para telas menores */
+            }
+            .core {
+                width: 250px; /* Ajustado para telas menores para cobrir duas bobinas */
+                height: 30px;
+                left: calc(50% - 125px); /* Ajustado para telas menores */
+                font-size: 0.8rem;
+            }
+            .graphs-row-container {
+                flex-direction: column; /* Empilha verticalmente em telas pequenas */
+                align-items: center;
+            }
+            .graph-container, .sinusoidal-graph-container {
+                flex: none; /* Remove o dimensionamento flexível */
+                width: 100%; /* Ocupa a largura total */
+                max-width: 600px; /* Limita a largura máxima mesmo quando empilhado */
+            }
+            .graph-container canvas {
+                height: 200px;
+            }
+            .sinusoidal-graph-container canvas {
+                height: 250px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .lvdt-container {
+                padding: 15px;
+            }
+            .lvdt-illustration {
+                height: 100px;
+            }
+            .coil {
+                height: 50px;
+                font-size: 0.7rem;
+            }
+            .primary-coil {
+                width: 100px;
+            }
+            .secondary-coil-1, .secondary-coil-2 {
+                width: 100px; /* Ajustado para telas menores */
+                left: 2%; /* Ajuste da posição para telas menores */
+            }
+            .secondary-coil-2 {
+                right: 2%; /* Ajuste da posição para telas menores */
+            }
+            .core {
+                width: 200px; /* Ajustado para telas menores */
+                height: 25px;
+                left: calc(50% - 100px); /* Ajustado para telas menores */
+                font-size: 0.7rem;
+            }
+            .output-display {
+                padding: 15px;
+            }
+            .graph-container, .sinusoidal-graph-container {
+                padding: 10px;
+            }
+            .graph-container canvas {
+                height: 180px;
+            }
+            .sinusoidal-graph-container canvas {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="lvdt-container">
+        <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4 text-center">Simulador LVDT</h1>
+
+        <div class="lvdt-illustration">
+            <!-- Bobina Secundária 1 -->
+            <div class="coil secondary-coil-1">
+                <span>Secundário 1</span>
+                <span class="voltage-symbol">V_S1</span>
+            </div>
+            <!-- Bobina Primária -->
+            <div class="coil primary-coil">
+                <span>Primário</span>
+            </div>
+            <!-- Bobina Secundária 2 -->
+            <div class="coil secondary-coil-2">
+                <span>Secundário 2</span>
+                <span class="voltage-symbol">V_S2</span>
+            </div>
+            <!-- Núcleo - Será arrastável -->
+            <div id="lvdtCore" class="core">
+                <span>Núcleo</span>
+            </div>
+        </div>
+
+        <div class="output-display">
+            <p class="text-lg text-gray-700">Deslocamento do Núcleo: <span id="displacementValue" class="font-semibold text-indigo-700">0.00 mm</span></p>
+            <p class="text-2xl font-bold text-gray-800 mt-2">Tensão de Saída (<span class="text-indigo-600">V_out</span>): <span id="outputVoltage" class="text-green-600">0.00 V</span></p>
+        </div>
+
+        <div class="slider-container">
+            <label for="displacementSlider" class="text-gray-700 text-lg">Ajustar Deslocamento:</label>
+            <input type="range" id="displacementSlider" min="-100" max="100" value="0">
+            <p class="text-sm text-gray-500">Arraste o núcleo ou use o controle deslizante para simular o deslocamento.</p>
+        </div>
+
+        <div class="graphs-row-container">
+            <div class="graph-container">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">Tensão de Saída vs. Deslocamento (DC)</h2>
+                <canvas id="lvdtGraph"></canvas>
+            </div>
+
+            <div class="sinusoidal-graph-container">
+                <h2 class="text-xl font-semibold text-gray-800 mb-3">Formas de Onda Senoidais (AC)</h2>
+                <canvas id="sinusoidalGraph"></canvas>
+            </div>
+        </div>
+
+        <div class="text-gray-600 text-sm mt-4 text-center max-w-prose">
+            <p>O LVDT (Linear Variable Differential Transformer) é um sensor eletromecânico que converte o movimento retilíneo de um objeto ao qual está acoplado em um sinal elétrico correspondente.</p>
+            <p class="mt-2">Ele consiste em uma bobina primária central e duas bobinas secundárias simetricamente espaçadas. Um núcleo ferromagnético móvel, conectado ao objeto cujo deslocamento será medido, move-se dentro dessas bobinas.</p>
+            <p class="mt-2">Uma tensão de excitação AC é aplicada à bobina primária. O movimento do núcleo altera o acoplamento magnético entre a bobina primária e as duas bobinas secundárias, induzindo tensões diferenciais nas secundárias. A diferença dessas tensões é o sinal de saída, que é proporcional ao deslocamento do núcleo.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const lvdtCore = document.getElementById('lvdtCore');
+            const displacementSlider = document.getElementById('displacementSlider');
+            const displacementValueSpan = document.getElementById('displacementValue');
+            const outputVoltageSpan = document.getElementById('outputVoltage');
+            const lvdtIllustration = document.querySelector('.lvdt-illustration');
+
+            const lvdtGraphCanvas = document.getElementById('lvdtGraph');
+            const ctx = lvdtGraphCanvas.getContext('2d');
+
+            const sinusoidalGraphCanvas = document.getElementById('sinusoidalGraph');
+            const sinusoidalCtx = sinusoidalGraphCanvas.getContext('2d');
+
+            let isDragging = false;
+            let initialMouseX;
+            let initialCoreX;
+            let initialTouchX; // Para eventos de toque
+
+            // Parâmetros do LVDT (simplificados para simulação)
+            const maxDisplacement = 50; // mm (do centro para o máximo esquerda/direita)
+            const sensitivity = 0.05; // V/mm (Volts por milímetro)
+            const Vin_amplitude = 5; // Amplitude de pico da tensão de entrada (V)
+            const maxSecondaryAmplitude = 2.5; // Amplitude máxima de pico para cada secundário (V)
+
+            // Frequência para o gráfico senoidal (Hz)
+            const frequency = 1; // 1 Hz para facilitar a visualização
+            const omega = 2 * Math.PI * frequency; // Velocidade angular
+
+            // Função para atualizar a saída do LVDT com base na posição do núcleo
+            function updateLVDT() {
+                const illustrationRect = lvdtIllustration.getBoundingClientRect();
+                const coreRect = lvdtCore.getBoundingClientRect();
+
+                // Calcula o centro X do núcleo em relação ao centro X da ilustração
+                const coreCenterX = coreRect.left + coreRect.width / 2;
+                const illustrationCenterX = illustrationRect.left + illustrationRect.width / 2;
+
+                // Deslocamento em pixels em relação ao centro
+                const displacementPx = coreCenterX - illustrationCenterX;
+
+                // Converte pixels para um valor de deslocamento normalizado (-1 a 1)
+                // A largura da ilustração é 95% do contêiner, o contêiner é 98vw.
+                // maxCoreMovementPx é a distância máxima que o centro do núcleo pode se mover do centro da ilustração
+                // Isso é (largura da ilustração / 2) - (largura do núcleo / 2)
+                const maxCoreMovementPx = (illustrationRect.width / 2) - (coreRect.width / 2);
+                const normalizedDisplacement = displacementPx / maxCoreMovementPx;
+
+                // Escala para o intervalo de deslocamento real (ex: -50mm a +50mm)
+                const actualDisplacement = normalizedDisplacement * maxDisplacement;
+
+                // Atualiza o valor do slider para refletir a posição real do núcleo
+                const sliderValue = (actualDisplacement / maxDisplacement) * 100;
+                displacementSlider.value = sliderValue;
+
+                // Calcula a amplitude da tensão de saída DC (para o gráfico linear)
+                const outputVoltageDC = sensitivity * actualDisplacement;
+
+                // Atualiza a exibição de texto
+                displacementValueSpan.textContent = `${actualDisplacement.toFixed(2)} mm`;
+                outputVoltageSpan.textContent = `${outputVoltageDC.toFixed(2)} V`;
+
+                // Calcula as amplitudes das tensões senoidais para V_S1 e V_S2
+                // V_S1 aumenta quando o núcleo se move para a esquerda (deslocamento negativo)
+                // V_S2 aumenta quando o núcleo se move para a direita (deslocamento positivo)
+                let amplitudeS1 = maxSecondaryAmplitude * (1 - normalizedDisplacement);
+                let amplitudeS2 = maxSecondaryAmplitude * (1 + normalizedDisplacement);
+
+                // Garante que as amplitudes não sejam negativas
+                amplitudeS1 = Math.max(0, amplitudeS1);
+                amplitudeS2 = Math.max(0, amplitudeS2);
+
+                // Calcula a amplitude da tensão de saída total (V_out_AC)
+                let outputVoltageAC_amplitude = Math.abs(amplitudeS1 - amplitudeS2);
+                let outputVoltageAC_phase = 0; // Em fase com Vin
+                if (amplitudeS2 > amplitudeS1) {
+                    outputVoltageAC_phase = Math.PI; // 180 graus fora de fase quando V_S2 é maior que V_S1
+                }
+
+                // Atualiza os gráficos
+                drawGraph(actualDisplacement, outputVoltageDC);
+                // V_S1 em fase 0, V_S2 em oposição de fase (Math.PI)
+                drawSinusoidalGraph(Vin_amplitude, amplitudeS1, amplitudeS2, outputVoltageAC_amplitude, outputVoltageAC_phase);
+            }
+
+            // --- Lógica de Desenho do Gráfico Linear (Tensão de Saída vs. Deslocamento) ---
+            function drawGraph(currentDisplacement, currentVoltage) {
+                const canvasWidth = lvdtGraphCanvas.width;
+                const canvasHeight = lvdtGraphCanvas.height;
+
+                // Limpa o canvas
+                ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+                // Define o preenchimento para o gráfico
+                const padding = 30;
+                const graphWidth = canvasWidth - 2 * padding;
+                const graphHeight = canvasHeight - 2 * padding;
+
+                // Desenha o eixo X (Deslocamento)
+                ctx.beginPath();
+                ctx.moveTo(padding, padding + graphHeight / 2);
+                ctx.lineTo(padding + graphWidth, padding + graphHeight / 2);
+                ctx.strokeStyle = '#6b7280'; /* Cinza */
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Desenha o eixo Y (Tensão de Saída)
+                ctx.beginPath();
+                ctx.moveTo(padding + graphWidth / 2, padding);
+                ctx.lineTo(padding + graphWidth / 2, padding + graphHeight);
+                ctx.strokeStyle = '#6b7280'; /* Cinza */
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Adiciona rótulos aos eixos
+                ctx.fillStyle = '#374151'; /* Cinza mais escuro */
+                ctx.font = '12px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText('Deslocamento (mm)', padding + graphWidth / 2, canvasHeight - 10);
+                ctx.save();
+                ctx.translate(10, padding + graphHeight / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText('Tensão de Saída (V)', 0, 0);
+                ctx.restore();
+
+                // Plota a relação linear
+                ctx.beginPath();
+                ctx.strokeStyle = '#4f46e5'; /* Índigo */
+                ctx.lineWidth = 3;
+
+                // Mapeia o intervalo de deslocamento (-maxDisplacement a +maxDisplacement) para o eixo X
+                // Mapeia o intervalo de tensão (-maxVoltage a +maxVoltage) para o eixo Y
+                const maxVoltage = sensitivity * maxDisplacement; // Tensão de saída máxima possível
+
+                // Ponto inicial (deslocamento mínimo, tensão mínima)
+                const startX = padding;
+                const startY = padding + graphHeight; // Parte inferior da área do gráfico
+
+                // Ponto final (deslocamento máximo, tensão máxima)
+                const endX = padding + graphWidth;
+                const endY = padding; // Parte superior da área do gráfico
+
+                ctx.moveTo(startX, startY);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+
+                // Desenha o ponto atual
+                const currentX = padding + graphWidth / 2 + (currentDisplacement / maxDisplacement) * (graphWidth / 2);
+                const currentY = padding + graphHeight / 2 - (currentVoltage / maxVoltage) * (graphHeight / 2);
+
+                ctx.beginPath();
+                ctx.arc(currentX, currentY, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#10b981'; /* Verde */
+                ctx.fill();
+                ctx.strokeStyle = '#059669'; /* Verde mais escuro */
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // --- Lógica de Desenho do Gráfico Senoidal ---
+            function drawSinusoidalGraph(vinAmp, vs1Amp, vs2Amp, voutAmp, voutPhase) {
+                const canvasWidth = sinusoidalGraphCanvas.width;
+                const canvasHeight = sinusoidalGraphCanvas.height;
+                const halfHeight = canvasHeight / 2;
+
+                sinusoidalCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+                const padding = 30;
+                const graphWidth = canvasWidth - 2 * padding;
+                const graphHeight = canvasHeight - 2 * padding;
+
+                // Desenha o eixo X (Tempo)
+                sinusoidalCtx.beginPath();
+                sinusoidalCtx.moveTo(padding, halfHeight);
+                sinusoidalCtx.lineTo(padding + graphWidth, halfHeight);
+                sinusoidalCtx.strokeStyle = '#6b7280';
+                sinusoidalCtx.lineWidth = 1;
+                sinusoidalCtx.stroke();
+
+                // Desenha o eixo Y (Tensão)
+                sinusoidalCtx.beginPath();
+                sinusoidalCtx.moveTo(padding, padding);
+                sinusoidalCtx.lineTo(padding, padding + graphHeight);
+                sinusoidalCtx.strokeStyle = '#6b7280';
+                sinusoidalCtx.lineWidth = 1;
+                sinusoidalCtx.stroke();
+
+                // Adiciona rótulos aos eixos
+                sinusoidalCtx.fillStyle = '#374151';
+                sinusoidalCtx.font = '12px Inter';
+                sinusoidalCtx.textAlign = 'center';
+                sinusoidalCtx.fillText('Tempo (s)', padding + graphWidth / 2, canvasHeight - 10);
+                sinusoidalCtx.save();
+                sinusoidalCtx.translate(10, halfHeight);
+                sinusoidalCtx.rotate(-Math.PI / 2);
+                sinusoidalCtx.fillText('Tensão (V)', 0, 0);
+                sinusoidalCtx.restore();
+
+                // Escala de tensão para o gráfico senoidal
+                const maxGraphVoltage = Math.max(Vin_amplitude, maxSecondaryAmplitude * 2) * 1.1; // Um pouco mais do que o máximo
+                const yScale = graphHeight / (2 * maxGraphVoltage); // 2 * maxGraphVoltage para cobrir positivo e negativo
+
+                // Função para desenhar uma forma de onda
+                function drawWave(amplitude, phase, color, label) {
+                    sinusoidalCtx.beginPath();
+                    sinusoidalCtx.strokeStyle = color;
+                    sinusoidalCtx.lineWidth = 2;
+                    for (let i = 0; i < graphWidth; i++) {
+                        const time = (i / graphWidth) * (2 * Math.PI / omega); // Mapeia a largura do gráfico para 2 ciclos
+                        const voltage = amplitude * Math.sin(omega * time + phase);
+                        const x = padding + i;
+                        const y = halfHeight - voltage * yScale;
+                        if (i === 0) {
+                            sinusoidalCtx.moveTo(x, y);
+                        } else {
+                            sinusoidalCtx.lineTo(x, y);
+                        }
+                    }
+                    sinusoidalCtx.stroke();
+                    // Adiciona rótulo da forma de onda
+                    sinusoidalCtx.fillStyle = color;
+                    sinusoidalCtx.textAlign = 'left';
+                    // Ajusta a posição do rótulo para não sobrepor a onda
+                    let labelY = halfHeight - amplitude * yScale - 10;
+                    if (amplitude < 0.5) { // Para amplitudes muito pequenas, ajusta a posição para cima
+                        labelY = halfHeight - 20;
+                    }
+                    sinusoidalCtx.fillText(label, padding + 5, labelY);
+                }
+
+                // Desenha as formas de onda
+                drawWave(Vin_amplitude, 0, '#6366f1', 'V_in'); // Azul índigo para Vin
+                drawWave(vs1Amp, 0, '#ef4444', 'V_S1'); // Vermelho para V_S1 (fase 0)
+                drawWave(vs2Amp, Math.PI, '#3b82f6', 'V_S2'); // Azul para V_S2 (fase 180 graus)
+                drawWave(voutAmp, voutPhase, '#10b981', 'V_out'); // Verde para V_out
+            }
+
+
+            // --- Lógica de Arrastar o Núcleo ---
+            lvdtCore.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lvdtCore.classList.add('dragging');
+                initialMouseX = e.clientX;
+                initialCoreX = lvdtCore.offsetLeft;
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+
+                const dx = e.clientX - initialMouseX;
+                let newLeft = initialCoreX + dx;
+
+                // Obtém os limites do contêiner da ilustração
+                const containerWidth = lvdtIllustration.offsetWidth;
+                const coreWidth = lvdtCore.offsetWidth;
+
+                // Limita o movimento do núcleo dentro da ilustração
+                newLeft = Math.max(0, Math.min(newLeft, containerWidth - coreWidth));
+
+                lvdtCore.style.left = `${newLeft}px`;
+                updateLVDT(); // Atualiza a saída do LVDT conforme o núcleo se move
+            });
+
+            document.addEventListener('mouseup', () => {
+                isDragging = false;
+                lvdtCore.classList.remove('dragging');
+            });
+
+            // --- Lógica do Slider ---
+            displacementSlider.addEventListener('input', () => {
+                const sliderValue = parseFloat(displacementSlider.value); // -100 a 100
+                // Converte o valor do slider para uma porcentagem do deslocamento máximo
+                const normalizedSliderValue = sliderValue / 100; // -1 a 1
+
+                // Calcula a posição esquerda alvo para o núcleo
+                const containerWidth = lvdtIllustration.offsetWidth;
+                const coreWidth = lvdtCore.offsetWidth;
+
+                // Calcula o intervalo máximo de movimento para o núcleo em pixels
+                const maxMovementPx = (containerWidth - coreWidth) / 2;
+
+                // Posição central do núcleo se estivesse perfeitamente centralizado
+                const centerCoreLeft = (containerWidth / 2) - (coreWidth / 2);
+
+                // Calcula a nova posição esquerda com base no valor normalizado do slider
+                const newLeft = centerCoreLeft + (normalizedSliderValue * maxMovementPx);
+
+                lvdtCore.style.left = `${newLeft}px`;
+                updateLVDT();
+            });
+
+            // --- Eventos de Toque para o Núcleo Arrastável (para celular) ---
+            lvdtCore.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                lvdtCore.classList.add('dragging');
+                initialTouchX = e.touches[0].clientX;
+                initialCoreX = lvdtCore.offsetLeft;
+                e.preventDefault(); // Previne o scroll durante o arrasto
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+
+                const dx = e.touches[0].clientX - initialTouchX;
+                let newLeft = initialCoreX + dx;
+
+                const containerWidth = lvdtIllustration.offsetWidth;
+                const coreWidth = lvdtCore.offsetWidth;
+
+                newLeft = Math.max(0, Math.min(newLeft, containerWidth - coreWidth));
+
+                lvdtCore.style.left = `${newLeft}px`;
+                updateLVDT();
+                e.preventDefault(); // Previne o scroll durante o arrasto
+            });
+
+            document.addEventListener('touchend', () => {
+                isDragging = false;
+                lvdtCore.classList.remove('dragging');
+            });
+
+            // Atualização inicial ao carregar para definir os valores corretos
+            updateLVDT();
+
+            // Recalcula e atualiza ao redimensionar a janela
+            window.addEventListener('resize', () => {
+                // Garante que a resolução do canvas corresponda ao tamanho de exibição para um desenho claro
+                lvdtGraphCanvas.width = lvdtGraphCanvas.offsetWidth;
+                lvdtGraphCanvas.height = lvdtGraphCanvas.offsetHeight;
+                sinusoidalGraphCanvas.width = sinusoidalGraphCanvas.offsetWidth;
+                sinusoidalGraphCanvas.height = sinusoidalGraphCanvas.offsetHeight;
+
+
+                // Recentraliza o núcleo com base no valor atual do slider
+                const sliderValue = parseFloat(displacementSlider.value);
+                const normalizedSliderValue = sliderValue / 100;
+
+                const containerWidth = lvdtIllustration.offsetWidth;
+                const coreWidth = lvdtCore.offsetWidth;
+                const maxMovementPx = (containerWidth - coreWidth) / 2;
+                const centerCoreLeft = (containerWidth / 2) - (coreWidth / 2);
+                const newLeft = centerCoreLeft + (normalizedSliderValue * maxMovementPx);
+                lvdtCore.style.left = `${newLeft}px`;
+
+                updateLVDT();
+            });
+
+            // Define a resolução inicial do canvas
+            lvdtGraphCanvas.width = lvdtGraphCanvas.offsetWidth;
+            lvdtGraphCanvas.height = lvdtGraphCanvas.offsetHeight;
+            sinusoidalGraphCanvas.width = sinusoidalGraphCanvas.offsetWidth;
+            sinusoidalGraphCanvas.height = sinusoidalGraphCanvas.offsetHeight;
+        });
+    </script>
+</body>
+</html>
